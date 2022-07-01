@@ -3,17 +3,28 @@ const { BadRequestError } = require("../helpers/errors")
 const handle = require("../helpers/handleExecute")
 const removeVietnameseTones = require("../helpers/removeVietnameseTones")
 const Category = require("../models/category.model")
+const CategoryHepler = require("../utils/checkCategory")
 
 
 //Find-------------------------------------
 exports.get = async (req, res, next) => {
-    const [err, rows] = await handle(Category.find())
+    const filter = {}
+    if(req.query){
+        if(req.query.hasOwnProperty('nameCategory'))
+            filter.nameCategory = req.query.nameCategory
+        if(req.query.hasOwnProperty('idParent'))
+            filter.idParent = req.query.idParent
+    }
+    const [err, rows] = await handle(Category.find(filter))
+    console.log("filter get Category:",filter)
+    
 
     if (err) {
         next(new BadRequestError(501, "Can't retrive data"))
+        console.log(err)
         return
     }
-    res.send({ data: rows })
+    res.status(200).send({ data: rows })
 }
 
 //Find by Id-------------------------------------
@@ -22,6 +33,7 @@ exports.getById = async (req, res, next) => {
     const [err, rows] = await handle(Category.findById(id))
 
     if (err) {
+        console.log(err)
         next(new BadRequestError(501, "Can't retrive data"))
         return
     }
@@ -31,55 +43,76 @@ exports.getById = async (req, res, next) => {
         return
     }
     // console.log(row)
-    res.send({ data: rows, })
+    res.status(200).send({ data: rows, })
 }
 
-// //Create------------------------------------
-// exports.create = async (req, res, next) => {
+//Create------------------------------------
+exports.create = async (req, res, next) => {
 
-//     const bookData = req.body
+    const categoryData = req.body
 
-//     if (!checkBookData(bookData)) {
-//         next(new BadRequestError(501, "Can't create a book"))
-//         return
-//     }
+    const dataError = await CategoryHepler.checkCreateData(categoryData)
 
-//     const book = new Book(bookData)
+    if (dataError) {
+        next(new BadRequestError(501, dataError))
+        return
+    }
 
-//     const [err, data] = await handle(book.save())
-//     if (err) {
-//         next(new BadRequestError(501, "Can't create a book"))
-//         return
-//     }
+    const category = new Category(categoryData)
 
-//     // console.log(data)
-//     res.send({ data: true })
-// }
+    const [err, data] = await handle(category.save())
+    if (err) {
+        next(new BadRequestError(501, "Can't create a category"))
+        return
+    }
 
-// //Update------------------------------------
-// exports.update = async (req, res, next) => {
-//     const id = req.params.id
-//     const data = req.body
+    // console.log(data)
+    res.status(200).send({ data: true })
+}
 
-//     let updateData = ''
-//     for (var key in data) {
-//         updateData += ` book.${key} = '${data[key]}', `
-//     }
-//     updateData = updateData.slice(0, -2)
+//Update------------------------------------
+exports.update = async (req, res, next) => {
+    const id = req.params.id
+    const data = req.body
 
-//     const [err, result] = await handle(Book.update(id, updateData))
+    const dataError = await CategoryHepler.checkUpdateData(data)
+    if (dataError) {
+        next(new BadRequestError(501, dataError))
+        return
+    }
 
-//     if (err) {
-//         console.log("Error on update book", err)
-//         next(new BadRequestError(501, `Can't update a book with id = ${id}`))
-//         return
-//     }
+    let updateData = ''
+    for (var key in data) {
+        updateData += ` category.${key} = ${data[key] ? `'${data[key]}'` : 'null'}, `
+    }
+    updateData = updateData.slice(0, -2)
 
-//     res.send({ data: true })
-// }
+    const [err, result] = await handle(Category.update(id, updateData))
 
-// //Delete------------------------------------
-// exports.delete = async (req, res, next) => {
-//     const id = req.params.id
-//     res.send({ data: 'Delete a book with id = ' + id })
-// }
+    if (err) {
+        console.log("Error on update category", err)
+        next(new BadRequestError(501, `Can't update a category with id = ${id}`))
+        return
+    }
+
+    res.status(200).send({ data: true })
+}
+
+//Delete------------------------------------
+exports.delete = async (req, res, next) => {
+    const id = req.params.id
+    
+    const idErr = await CategoryHepler.checkDeleteData(id)
+
+    if(idErr){
+        next(new BadRequestError(501, idErr))
+        return
+    }   
+    const [err, document] = await handle(Category.delete(id))
+    if(err){
+        next(new BadRequestError(501, `Can't delete with id = ${id}`))
+        return
+    }
+
+    res.status(200).send({ data: true })
+}

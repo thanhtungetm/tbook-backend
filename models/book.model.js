@@ -42,6 +42,12 @@ class Book {
         const rows = await querySql(sql)
         return rows[0]
     }
+    //find by Category
+    static async findByIdCategory(idCategory) {
+        let sql = `select * from book, category where book.idCategory = category.idCategory and book.idCategory = ${idCategory}`
+        const rows = await querySql(sql)
+        return rows[0]
+    }
 
     static async update(id, data) {
         let sql = `update book set ` + data + ` where book.idBook = ${id}`
